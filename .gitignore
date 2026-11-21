@@ -221,3 +221,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Dados (baixados nos notebooks, não versionados)
+data/
+
+# Checkpoints intermediários de treino (só o modelo final vai pro repositório)
+checkpoints/
