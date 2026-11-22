@@ -1,8 +1,7 @@
-"""Dataset do PyTorch para a PCam e as transformações de imagem."""
+"""Leitura da PCam em lotes e preparo das imagens na GPU (normalização e aumento de dados)."""
 import numpy as np
 import torch
-from torch.utils.data import Dataset
-from torchvision.transforms import v2
+from torch.utils.data import BatchSampler, DataLoader, Dataset, RandomSampler, SequentialSampler
 
 # Média e desvio por canal da ImageNet — a normalização esperada pelas redes pré-treinadas.
 # Usada em todos os modelos, para que as comparações sejam justas.
@@ -10,36 +9,42 @@ MEDIA = (0.485, 0.456, 0.406)
 DESVIO = (0.229, 0.224, 0.225)
 
 
-class RotacaoAleatoria90(torch.nn.Module):
-    """Gira a imagem 0°, 90°, 180° ou 270°, ao acaso. Tecido no microscópio não tem orientação."""
+class LotesPCam(Dataset):
+    """Recebe uma LISTA de índices e devolve o lote inteiro, lido de uma vez do memmap (uint8)."""
 
-    def forward(self, imagem):
-        k = int(torch.randint(0, 4, (1,)))
-        return torch.rot90(imagem, k, dims=(-2, -1))
-
-
-def transformacoes(treino, aumento=True):
-    """Aumento de dados geométrico (só no treino) + conversão para float e normalização."""
-    passos = []
-    if treino and aumento:
-        passos += [v2.RandomHorizontalFlip(), v2.RandomVerticalFlip(), RotacaoAleatoria90()]
-    passos += [v2.ToDtype(torch.float32, scale=True), v2.Normalize(MEDIA, DESVIO)]
-    return v2.Compose(passos)
-
-
-class PCam(Dataset):
-    """Entrega (imagem, rótulo) a partir dos arrays preparados por `src.dados.preparar_split`."""
-
-    def __init__(self, X, y, transform=None):
+    def __init__(self, X, y):
         self.X = X
-        self.y = torch.as_tensor(y, dtype=torch.float32)
-        self.transform = transform
+        self.y = np.asarray(y, dtype=np.float32)
 
     def __len__(self):
         return len(self.y)
 
-    def __getitem__(self, i):
-        imagem = torch.from_numpy(np.array(self.X[i])).permute(2, 0, 1)  # (96, 96, 3) -> (3, 96, 96)
-        if self.transform is not None:
-            imagem = self.transform(imagem)
-        return imagem, self.y[i]
+    def __getitem__(self, indices):
+        indices = np.sort(indices)  # leitura em ordem crescente no disco: mais rápida
+        return torch.from_numpy(self.X[indices]), torch.from_numpy(self.y[indices])
+
+
+def carregador(X, y, tamanho_lote, embaralhar, num_workers=2):
+    """DataLoader que pede lotes inteiros ao dataset (embaralhados a cada época, se pedido)."""
+    indices = range(len(y))
+    amostrador = RandomSampler(indices) if embaralhar else SequentialSampler(indices)
+    lotes = BatchSampler(amostrador, batch_size=tamanho_lote, drop_last=False)
+    return DataLoader(LotesPCam(X, y), sampler=lotes, batch_size=None,
+                      num_workers=num_workers, pin_memory=True)
+
+
+def preparar_lote(imagens, aumento):
+    """Lote uint8 (B, 96, 96, 3) já na GPU -> float normalizado (B, 3, 96, 96).
+
+    Com `aumento`, cada imagem recebe uma das 8 simetrias do quadrado, sorteada:
+    espelho horizontal, espelho vertical e transposição, cada um com 50% de chance.
+    """
+    x = imagens.permute(0, 3, 1, 2).float().div_(255)
+    if aumento:
+        n = x.shape[0]
+        for operacao in (lambda t: t.flip(-1), lambda t: t.flip(-2), lambda t: t.transpose(-1, -2)):
+            sorteio = torch.rand(n, device=x.device) < 0.5
+            x = torch.where(sorteio[:, None, None, None], operacao(x), x)
+    media = torch.tensor(MEDIA, device=x.device).view(1, 3, 1, 1)
+    desvio = torch.tensor(DESVIO, device=x.device).view(1, 3, 1, 1)
+    return (x - media) / desvio
