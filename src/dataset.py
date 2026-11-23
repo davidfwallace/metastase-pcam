@@ -24,16 +24,23 @@ class LotesPCam(Dataset):
         return torch.from_numpy(self.X[indices]), torch.from_numpy(self.y[indices])
 
 
-def carregador(X, y, tamanho_lote, embaralhar, num_workers=2):
-    """DataLoader que pede lotes inteiros ao dataset (embaralhados a cada época, se pedido)."""
+def carregador(X, y, tamanho_lote, embaralhar, num_workers=None):
+    """DataLoader que pede lotes inteiros ao dataset (embaralhados a cada época, se pedido).
+
+    Sem `num_workers`, escolhe sozinho: 2 workers para memmap (leitura do disco em paralelo),
+    0 para dados na RAM (montar o lote é instantâneo; workers só somariam custo de comunicação).
+    """
+    if num_workers is None:
+        num_workers = 2 if isinstance(X, np.memmap) else 0
     indices = range(len(y))
     amostrador = RandomSampler(indices) if embaralhar else SequentialSampler(indices)
     lotes = BatchSampler(amostrador, batch_size=tamanho_lote, drop_last=False)
     com_workers = num_workers > 0
     return DataLoader(LotesPCam(X, y), sampler=lotes, batch_size=None,
                       num_workers=num_workers, pin_memory=True,
-                      persistent_workers=com_workers,               # workers criados uma vez só
-                      prefetch_factor=4 if com_workers else None)   # 4 lotes prontos por worker
+                      persistent_workers=com_workers,
+                      prefetch_factor=4 if com_workers else None)
+
 
 def preparar_lote(imagens, aumento):
     """Lote uint8 (B, 96, 96, 3) já na GPU -> float normalizado (B, 3, 96, 96).

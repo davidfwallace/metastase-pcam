@@ -1,6 +1,7 @@
 """Preparação dos dados da PCam: decodifica os PNGs uma vez para arrays em disco (memmap)."""
 import io
 import time
+import psutil
 from pathlib import Path
 
 import numpy as np
@@ -45,3 +46,15 @@ def preparar_split(data_dir, split, cache_dir):
         print(f"{split}: {n:,} imagens decodificadas em {time.time() - inicio:.0f} s")
 
     return np.load(caminho_x, mmap_mode="r"), np.load(caminho_y)
+
+
+def para_ram_se_couber(X, margem_gb=4.0):
+    """Copia o array para a RAM se, depois da cópia, ainda sobrarem `margem_gb` livres.
+
+    Senão devolve o próprio memmap. Com RAM alta (Colab Pro) a leitura fica bem mais rápida;
+    no Colab gratuito o treino não cabe e seguimos lendo do disco.
+    """
+    livre_gb = psutil.virtual_memory().available / 1e9
+    if livre_gb - X.nbytes / 1e9 >= margem_gb:
+        return np.array(X)
+    return X
