@@ -84,7 +84,8 @@ def treinar(modelo, carregador_treino, carregador_valid, n_epocas, pasta_checkpo
     """
     pasta = Path(pasta_checkpoints)
     pasta.mkdir(parents=True, exist_ok=True)
-    otimizador = torch.optim.AdamW(modelo.parameters(), lr=lr, weight_decay=weight_decay)
+    parametros_treinaveis = [p for p in modelo.parameters() if p.requires_grad]
+    otimizador = torch.optim.AdamW(parametros_treinaveis, lr=lr, weight_decay=weight_decay)
     agendador = torch.optim.lr_scheduler.CosineAnnealingLR(otimizador, T_max=n_epocas)
     escalador = torch.amp.GradScaler("cuda")
     historico = []

@@ -67,7 +67,8 @@ def preparar_lote(imagens, aumento, cor=False):
 
     Com `aumento`, cada imagem recebe uma das 8 simetrias do quadrado, sorteada:
     espelho horizontal, espelho vertical e transposição, cada um com 50% de chance.
-    Com `cor`, recebe também variações de cor (ver `aumentar_cor`).
+    Com `cor`, recebe também variações de cor (ver `aumentar_cor`): `True` usa a força padrão;
+    um dicionário, como `dict(forca=0.3, desvio_canal=0.15)`, escolhe outra.
     """
     x = imagens.permute(0, 3, 1, 2).float().div_(255)
     if aumento:
@@ -76,7 +77,7 @@ def preparar_lote(imagens, aumento, cor=False):
             sorteio = torch.rand(n, device=x.device) < 0.5
             x = torch.where(sorteio[:, None, None, None], operacao(x), x)
     if cor:
-        x = aumentar_cor(x)
+        x = aumentar_cor(x, **(cor if isinstance(cor, dict) else {}))
     media = torch.tensor(MEDIA, device=x.device).view(1, 3, 1, 1)
     desvio = torch.tensor(DESVIO, device=x.device).view(1, 3, 1, 1)
     return (x - media) / desvio
