@@ -29,9 +29,11 @@ def carregador(X, y, tamanho_lote, embaralhar, num_workers=2):
     indices = range(len(y))
     amostrador = RandomSampler(indices) if embaralhar else SequentialSampler(indices)
     lotes = BatchSampler(amostrador, batch_size=tamanho_lote, drop_last=False)
+    com_workers = num_workers > 0
     return DataLoader(LotesPCam(X, y), sampler=lotes, batch_size=None,
-                      num_workers=num_workers, pin_memory=True)
-
+                      num_workers=num_workers, pin_memory=True,
+                      persistent_workers=com_workers,               # workers criados uma vez só
+                      prefetch_factor=4 if com_workers else None)   # 4 lotes prontos por worker
 
 def preparar_lote(imagens, aumento):
     """Lote uint8 (B, 96, 96, 3) já na GPU -> float normalizado (B, 3, 96, 96).
