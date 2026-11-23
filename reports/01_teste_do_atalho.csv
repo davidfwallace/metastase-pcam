@@ -1,0 +1,10 @@
+característica,direção,ROC AUC (validação)
+regressão logística (as 8 juntas),—,0.8099
+fração branca,menor → mais metástase,0.6954
+fração branca (centro),menor → mais metástase,0.6844
+verde,menor → mais metástase,0.6284
+brilho,menor → mais metástase,0.5831
+brilho (centro),menor → mais metástase,0.5735
+azul,menor → mais metástase,0.5731
+vermelho,menor → mais metástase,0.5728
+contraste,menor → mais metástase,0.4874
