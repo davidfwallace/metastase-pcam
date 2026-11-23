@@ -1,0 +1,7 @@
+config,auc_media,auc_desvio,perda_media,acuracia_media
+C_fine_tuning_3ep,0.9592,0.0009,0.3569,0.8791
+D_fine_tuning_cor_3ep,0.9557,0.0042,0.333,0.8815
+C_fine_tuning,0.9545,0.0022,0.5517,0.864
+D_fine_tuning_cor,0.9534,0.0029,0.4501,0.8726
+A_aleatoria,0.9478,0.0034,0.4572,0.8575
+B_so_cabeca,0.9011,0.0007,0.4019,0.8183
