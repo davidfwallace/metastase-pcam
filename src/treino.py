@@ -94,10 +94,11 @@ def treinar(modelo, carregador_treino, carregador_valid, n_epocas, pasta_checkpo
     if caminho_ultimo.exists():
         estado = torch.load(caminho_ultimo, map_location="cuda", weights_only=True)
         modelo.load_state_dict(estado["modelo"])
-        otimizador.load_state_dict(estado["otimizador"])
-        agendador.load_state_dict(estado["agendador"])
-        escalador.load_state_dict(estado["escalador"])
         historico = estado["historico"]
+        if len(historico) < n_epocas:  # treino pela metade: o estado completo é necessário para continuar
+            otimizador.load_state_dict(estado["otimizador"])
+            agendador.load_state_dict(estado["agendador"])
+            escalador.load_state_dict(estado["escalador"])
         print(f"Retomando depois da época {len(historico)}. Épocas já feitas:")
         for registro in historico:
             print(resumo_da_epoca(registro, n_epocas))
