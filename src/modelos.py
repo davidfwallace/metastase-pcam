@@ -1,5 +1,6 @@
 """Arquiteturas de rede para a PCam."""
 from torch import nn
+from torchvision.models import ResNet18_Weights, resnet18
 
 
 def bloco_convolucional(entrada, saida):
@@ -34,3 +35,32 @@ class CNNPequena(nn.Module):
 
     def forward(self, x):
         return self.cabeca(self.extrator(x)).squeeze(1)  # (B, 1) -> (B,), o mesmo formato dos rótulos
+
+
+class ResNetPCam(nn.Module):
+    """ResNet-18 com a cabeça trocada por uma saída única (logit).
+
+    pretreinada: começa dos pesos da ImageNet (senão, pesos aleatórios).
+    congelar: treina só a cabeça; o resto da rede fica fixo, incluindo as médias do BatchNorm.
+    """
+
+    def __init__(self, pretreinada=True, congelar=False):
+        super().__init__()
+        self.congelar = congelar
+        self.rede = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1 if pretreinada else None)
+        if congelar:
+            for parametro in self.rede.parameters():
+                parametro.requires_grad_(False)
+        self.rede.fc = nn.Linear(self.rede.fc.in_features, 1)  # cabeça nova, sempre treinável
+
+    def train(self, mode=True):
+        """Com a rede congelada, os BatchNorms ficam sempre em modo de avaliação."""
+        super().train(mode)
+        if self.congelar:
+            for modulo in self.rede.modules():
+                if isinstance(modulo, nn.BatchNorm2d):
+                    modulo.eval()
+        return self
+
+    def forward(self, x):
+        return self.rede(x).squeeze(1)  # (B, 1) -> (B,)
