@@ -70,12 +70,13 @@ RGB_DE_HED = torch.tensor([[0.65, 0.70, 0.29],
 HED_DE_RGB = torch.linalg.inv(RGB_DE_HED)
 
 
-def aumentar_corantes(x, sigma_escala=0.2, sigma_desvio=0.05):
+def aumentar_corantes(x, sigma_escala=0.5, sigma_desvio=0.125):
     """Varia a quantidade de hematoxilina e de eosina de cada imagem (x em [0, 1], formato (B, 3, H, W)).
 
     Converte RGB em quantidade de cada corante (densidade óptica, lei de Beer-Lambert), multiplica
     cada corante por um fator em [1 - sigma_escala, 1 + sigma_escala], soma um deslocamento em
     [-sigma_desvio, sigma_desvio] e volta para RGB. O resultado é sempre uma mistura de roxo e rosa.
+    Força escolhida por inspeção visual: a maior em que todas as variações ainda parecem H&E.
     """
     n = x.shape[0]
     rgb_de_hed = RGB_DE_HED.to(x.device)
