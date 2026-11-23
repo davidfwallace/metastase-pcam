@@ -62,13 +62,45 @@ def aumentar_cor(x, forca=0.2, desvio_canal=0.05):
     return x.clamp(0, 1)
 
 
+# Cor de cada corante em densidade óptica (linhas: hematoxilina, eosina, DAB), de Ruifrok e Johnston (2001),
+# a mesma matriz do skimage.color.rgb2hed.
+RGB_DE_HED = torch.tensor([[0.65, 0.70, 0.29],
+                           [0.07, 0.99, 0.11],
+                           [0.27, 0.57, 0.78]])
+HED_DE_RGB = torch.linalg.inv(RGB_DE_HED)
+
+
+def aumentar_corantes(x, sigma_escala=0.2, sigma_desvio=0.05):
+    """Varia a quantidade de hematoxilina e de eosina de cada imagem (x em [0, 1], formato (B, 3, H, W)).
+
+    Converte RGB em quantidade de cada corante (densidade óptica, lei de Beer-Lambert), multiplica
+    cada corante por um fator em [1 - sigma_escala, 1 + sigma_escala], soma um deslocamento em
+    [-sigma_desvio, sigma_desvio] e volta para RGB. O resultado é sempre uma mistura de roxo e rosa.
+    """
+    n = x.shape[0]
+    rgb_de_hed = RGB_DE_HED.to(x.device)
+    hed_de_rgb = HED_DE_RGB.to(x.device)
+
+    densidade = -torch.log(x.clamp(min=1e-6))                         # luz absorvida, em escala log
+    corantes = torch.einsum("bchw,cd->bdhw", densidade, hed_de_rgb)    # quanto de cada corante por pixel
+
+    escala = 1 + (torch.rand(n, 3, 1, 1, device=x.device) * 2 - 1) * sigma_escala
+    deslocamento = (torch.rand(n, 3, 1, 1, device=x.device) * 2 - 1) * sigma_desvio
+    escala[:, 2] = 1          # DAB não existe em H&E: fica como está
+    deslocamento[:, 2] = 0
+    corantes = corantes * escala + deslocamento
+
+    densidade = torch.einsum("bdhw,dc->bchw", corantes, rgb_de_hed)    # de volta: corantes -> luz absorvida
+    return torch.exp(-densidade).clamp(0, 1)
+
+
 def preparar_lote(imagens, aumento, cor=False):
     """Lote uint8 (B, 96, 96, 3) já na GPU -> float normalizado (B, 3, 96, 96).
 
     Com `aumento`, cada imagem recebe uma das 8 simetrias do quadrado, sorteada:
     espelho horizontal, espelho vertical e transposição, cada um com 50% de chance.
-    Com `cor`, recebe também variações de cor (ver `aumentar_cor`): `True` usa a força padrão;
-    um dicionário, como `dict(forca=0.3, desvio_canal=0.15)`, escolhe outra.
+    Com `cor`, recebe também variações de cor: `True` usa `aumentar_cor` com a força padrão;
+    um dicionário escolhe outra força; `"corantes"` usa `aumentar_corantes` (variação de H e E).
     """
     x = imagens.permute(0, 3, 1, 2).float().div_(255)
     if aumento:
@@ -76,7 +108,9 @@ def preparar_lote(imagens, aumento, cor=False):
         for operacao in (lambda t: t.flip(-1), lambda t: t.flip(-2), lambda t: t.transpose(-1, -2)):
             sorteio = torch.rand(n, device=x.device) < 0.5
             x = torch.where(sorteio[:, None, None, None], operacao(x), x)
-    if cor:
+    if cor == "corantes":
+        x = aumentar_corantes(x)
+    elif cor:
         x = aumentar_cor(x, **(cor if isinstance(cor, dict) else {}))
     media = torch.tensor(MEDIA, device=x.device).view(1, 3, 1, 1)
     desvio = torch.tensor(DESVIO, device=x.device).view(1, 3, 1, 1)
