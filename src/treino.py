@@ -11,7 +11,7 @@ from torch import nn
 from src.dataset import preparar_lote
 
 
-def treinar_uma_epoca(modelo, carregador, otimizador, escalador, aumento=True):
+def treinar_uma_epoca(modelo, carregador, otimizador, escalador, aumento=True, cor=False):
     """Uma passada por todos os lotes de treino. Devolve a perda média da época."""
     modelo.train()  # Dropout ligado; BatchNorm usa as estatísticas do lote
     perda_fn = nn.BCEWithLogitsLoss()
@@ -20,7 +20,7 @@ def treinar_uma_epoca(modelo, carregador, otimizador, escalador, aumento=True):
     for imagens, rotulos in carregador:
         imagens = imagens.cuda(non_blocking=True)
         rotulos = rotulos.cuda(non_blocking=True)
-        x = preparar_lote(imagens, aumento=aumento)
+        x = preparar_lote(imagens, aumento=aumento, cor=cor)
 
         with torch.autocast("cuda", dtype=torch.float16):  # precisão mista
             logits = modelo(x)
@@ -76,7 +76,7 @@ def resumo_da_epoca(registro, n_epocas):
 
 
 def treinar(modelo, carregador_treino, carregador_valid, n_epocas, pasta_checkpoints,
-            lr=1e-3, weight_decay=1e-4, aumento=True):
+            lr=1e-3, weight_decay=1e-4, aumento=True, cor=False):
     """Treina por `n_epocas`, avaliando na validação a cada época.
 
     Salva `ultimo.pt` (estado completo, para retomar) e `melhor.pt` (pesos da maior AUC de validação).
@@ -105,7 +105,7 @@ def treinar(modelo, carregador_treino, carregador_valid, n_epocas, pasta_checkpo
     for epoca in range(len(historico) + 1, n_epocas + 1):
         inicio = time.time()
         lr_da_epoca = otimizador.param_groups[0]["lr"]
-        perda_treino = treinar_uma_epoca(modelo, carregador_treino, otimizador, escalador, aumento)
+        perda_treino = treinar_uma_epoca(modelo, carregador_treino, otimizador, escalador, aumento, cor)
         agendador.step()
         metricas = avaliar(modelo, carregador_valid)
         historico.append({"epoca": epoca, "lr": lr_da_epoca, "perda_treino": perda_treino,
