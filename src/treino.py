@@ -67,6 +67,14 @@ def salvar_com_seguranca(objeto, caminho):
     os.replace(temporario, caminho)
 
 
+def resumo_da_epoca(registro, n_epocas):
+    """Uma linha com as métricas de uma época do histórico."""
+    return (f"Época {registro['epoca']:2d}/{n_epocas} | lr {registro['lr']:.2e} | "
+            f"treino {registro['perda_treino']:.3f} | valid perda {registro['valid_perda']:.3f} "
+            f"AUC {registro['valid_auc']:.3f} acurácia {registro['valid_acuracia']:.3f} | "
+            f"{registro['segundos']:.0f} s")
+
+
 def treinar(modelo, carregador_treino, carregador_valid, n_epocas, pasta_checkpoints,
             lr=1e-3, weight_decay=1e-4, aumento=True):
     """Treina por `n_epocas`, avaliando na validação a cada época.
@@ -89,7 +97,9 @@ def treinar(modelo, carregador_treino, carregador_valid, n_epocas, pasta_checkpo
         agendador.load_state_dict(estado["agendador"])
         escalador.load_state_dict(estado["escalador"])
         historico = estado["historico"]
-        print(f"Retomando depois da época {len(historico)}.")
+        print(f"Retomando depois da época {len(historico)}. Épocas já feitas:")
+        for registro in historico:
+            print(resumo_da_epoca(registro, n_epocas))
 
     melhor_auc = max((r["valid_auc"] for r in historico), default=0.0)
     for epoca in range(len(historico) + 1, n_epocas + 1):
@@ -111,8 +121,5 @@ def treinar(modelo, carregador_treino, carregador_valid, n_epocas, pasta_checkpo
                               "agendador": agendador.state_dict(), "escalador": escalador.state_dict(),
                               "historico": historico}, caminho_ultimo)
 
-        print(f"Época {epoca:2d}/{n_epocas} | lr {lr_da_epoca:.2e} | treino {perda_treino:.3f} | "
-              f"valid perda {metricas['perda']:.3f} AUC {metricas['auc']:.3f} "
-              f"acurácia {metricas['acuracia']:.3f} | {historico[-1]['segundos']:.0f} s"
-              + (" | recorde" if recorde else ""))
+        print(resumo_da_epoca(historico[-1], n_epocas) + (" | recorde" if recorde else ""))
     return historico
