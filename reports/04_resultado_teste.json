@@ -1,0 +1,71 @@
+{
+  "decisoes": {
+    "modelo": "C_fine_tuning_3ep",
+    "sementes": [
+      0,
+      1,
+      2
+    ],
+    "checkpoint": "ultimo.pt (última época)",
+    "ensemble": "média dos logits das 3 sementes",
+    "tta": "média dos logits nas 8 simetrias do quadrado",
+    "sensibilidade_alvo_valid": 0.95,
+    "limiar_logit": -3.4147136211395264,
+    "limiar_probabilidade": 0.03183877840638161,
+    "auc_valid": 0.9673314342259344
+  },
+  "combinacoes": {
+    "Modelo único (média das sementes)": {
+      "auc": 0.938977658164645,
+      "log_loss": 0.5068952242533366
+    },
+    "Modelo único + TTA": {
+      "auc": 0.9468536453787063,
+      "log_loss": 0.48863673210144043
+    },
+    "Ensemble": {
+      "auc": 0.9462524852394006,
+      "log_loss": 0.481950044631958
+    },
+    "Ensemble + TTA (modelo final)": {
+      "auc": 0.9509778212678179,
+      "log_loss": 0.47621339559555054
+    },
+    "CNN pequena (02, última época)": {
+      "auc": 0.9318079172022191,
+      "log_loss": 0.5005688667297363
+    }
+  },
+  "auc_final_ic95_bootstrap_por_imagem": [
+    0.9485184297919244,
+    0.9530233864677027
+  ],
+  "por_limiar": {
+    "escolhido (sensib. 95% na validação)": {
+      "sensibilidade": 0.9111558893570251,
+      "sensibilidade_ic95": [
+        0.9067012880807765,
+        0.9154176438305119
+      ],
+      "especificidade": 0.8289305106460862,
+      "especificidade_ic95": [
+        0.8230886049173157,
+        0.8346182679566497
+      ],
+      "acuracia": 0.870025634765625
+    },
+    "padrão (probabilidade 0,5)": {
+      "sensibilidade": 0.689503572082799,
+      "sensibilidade_ic95": [
+        0.682373261871147,
+        0.696544998348157
+      ],
+      "especificidade": 0.9801110365444451,
+      "especificidade_ic95": [
+        0.9778583743100449,
+        0.9821387018434691
+      ],
+      "acuracia": 0.834869384765625
+    }
+  }
+}
