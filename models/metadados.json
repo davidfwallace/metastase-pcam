@@ -1,0 +1,39 @@
+{
+  "arquivo_pesos": "pcam_resnet18_ensemble.pt",
+  "url_pesos": "https://github.com/davidfwallace/metastase-pcam/releases/download/v1.0/pcam_resnet18_ensemble.pt",
+  "sha256": "863a6ce2e0b36e36e72419676ffc2aa459f480479cb8f72af50277997867afd4",
+  "tamanho_mb": 67.2,
+  "arquitetura": "ResNetPCam (src/modelos.py): ResNet-18 com saída única (logit)",
+  "treino": {
+    "configuracao": "C_fine_tuning_3ep",
+    "sementes": [
+      0,
+      1,
+      2
+    ],
+    "epocas": 3,
+    "otimizador": "AdamW (lr 1e-4, weight decay 1e-4), agendamento cosseno",
+    "aumento_de_dados": "8 simetrias do quadrado",
+    "pre_treino": "ImageNet (torchvision IMAGENET1K_V1)"
+  },
+  "entrada": "imagem RGB 96x96, uint8; normalizada com média e desvio da ImageNet",
+  "previsao": {
+    "ensemble": "média dos logits das 3 sementes",
+    "tta": "média dos logits nas 8 simetrias do quadrado"
+  },
+  "limiar_logit": -3.4147136211395264,
+  "limiar_probabilidade": 0.03183877840638161,
+  "validacao": {
+    "auc": 0.9673314342259344,
+    "sensibilidade_alvo": 0.95
+  },
+  "teste": {
+    "auc": 0.9509778212678179,
+    "sensibilidade": 0.9111558893570251,
+    "especificidade": 0.8289305106460862
+  },
+  "avisos": [
+    "As probabilidades não são calibradas: use o limiar, não a probabilidade ao pé da letra.",
+    "Projeto de estudo. Não é um dispositivo médico e não deve ser usado em diagnóstico."
+  ]
+}

@@ -227,3 +227,5 @@ data/
 
 # Checkpoints intermediários de treino (só o modelo final vai pro repositório)
 checkpoints/
+
+models/*.pt

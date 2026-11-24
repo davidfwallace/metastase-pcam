@@ -1,0 +1,15 @@
+{
+  "modelo": "C_fine_tuning_3ep",
+  "sementes": [
+    0,
+    1,
+    2
+  ],
+  "checkpoint": "ultimo.pt (última época)",
+  "ensemble": "média dos logits das 3 sementes",
+  "tta": "média dos logits nas 8 simetrias do quadrado",
+  "sensibilidade_alvo_valid": 0.95,
+  "limiar_logit": -3.4147136211395264,
+  "limiar_probabilidade": 0.03183877840638161,
+  "auc_valid": 0.9673314342259344
+}
