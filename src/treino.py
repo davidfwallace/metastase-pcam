@@ -36,19 +36,36 @@ def treinar_uma_epoca(modelo, carregador, otimizador, escalador, aumento=True, c
     return (soma_perdas / n_imagens).item()
 
 
+# As 8 simetrias do quadrado: espelho horizontal, espelho vertical e transposição, ligados ou não
+SIMETRIAS = [(h, v, t) for h in (False, True) for v in (False, True) for t in (False, True)]
+
+
+def aplicar_simetria(x, horizontal, vertical, transpor):
+    if horizontal:
+        x = x.flip(-1)
+    if vertical:
+        x = x.flip(-2)
+    if transpor:
+        x = x.transpose(-1, -2)
+    return x
+
+
 @torch.no_grad()
-def prever(modelo, carregador):
-    """Logits de todas as imagens do carregador (sem aumento de dados) e os rótulos."""
+def prever(modelo, carregador, tta=False):
+    """Logits de todas as imagens do carregador e os rótulos.
+
+    Com `tta`, cada imagem é prevista nas 8 simetrias do quadrado e os logits são promediados.
+    """
     modelo.eval()  # Dropout desligado; BatchNorm usa as estatísticas acumuladas no treino
+    simetrias = SIMETRIAS if tta else [(False, False, False)]
     todos_logits, todos_rotulos = [], []
     for imagens, rotulos in carregador:
         x = preparar_lote(imagens.cuda(non_blocking=True), aumento=False)
         with torch.autocast("cuda", dtype=torch.float16):
-            logits = modelo(x)
-        todos_logits.append(logits.float().cpu())
+            soma = sum(modelo(aplicar_simetria(x, *s)).float() for s in simetrias)
+        todos_logits.append((soma / len(simetrias)).cpu())
         todos_rotulos.append(rotulos)
     return torch.cat(todos_logits).numpy(), torch.cat(todos_rotulos).numpy()
-
 
 def avaliar(modelo, carregador):
     """Perda, ROC AUC e acurácia (com limiar 0.5, ou seja, logit > 0)."""
